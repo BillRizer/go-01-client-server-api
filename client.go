@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -25,7 +24,7 @@ type Response struct {
 }
 
 func fetch() (*Response, error) {
-	const url = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
+	const url = "http://localhost:3333/cotation"
 	response, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching data: %w", err)
@@ -38,26 +37,32 @@ func fetch() (*Response, error) {
 	return &data, nil
 }
 
-func getCotation(w http.ResponseWriter, r *http.Request) {
+func saveToFile(filename, data string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.WriteString(data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func main() {
 	response, err := fetch()
 	if err != nil {
 		fmt.Printf("Error fetching data: %v\n", err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
-}
-
-func main() {
-	fmt.Println("Starting server...")
-	http.HandleFunc("/cotation", getCotation)
-
-	err := http.ListenAndServe(":8080", nil)
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-	} else if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
-		os.Exit(1)
+	text := fmt.Sprintf("Dólar: %s", response.Usdbrl.Bid)
+	errSaveFile := saveToFile("cotacao.txt", text)
+	if errSaveFile != nil {
+		fmt.Println("Erro ao salvar o arquivo:", err)
+		return
 	}
+	fmt.Print(response)
+	fmt.Println("Hello, World!")
+	fmt.Println("This is a Go program")
 }
