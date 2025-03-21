@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 )
 
 type Response struct {
@@ -23,11 +25,17 @@ type Response struct {
 	} `json:"USDBRL"`
 }
 
-func fetch() (*Response, error) {
+func fetch(ctx context.Context) (*Response, error) {
 	const url = "http://localhost:3333/cotation"
-	response, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Error fetching data: %w", err)
+		return nil, fmt.Errorf("Error when creating request: %w", err)
+	}
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Error when making request: %w", err)
 	}
 	defer response.Body.Close()
 	var data Response
@@ -51,7 +59,10 @@ func saveToFile(filename, data string) error {
 }
 
 func main() {
-	response, err := fetch()
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Millisecond)
+	defer cancel()
+	response, err := fetch(ctx)
 	if err != nil {
 		fmt.Printf("Error fetching data: %v\n", err)
 		return
